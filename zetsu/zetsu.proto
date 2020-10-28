@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package zetsu;
+option go_package = "github.com/wyzidu/zetsu";
+
+service Zetsu {
+    rpc RegisterMonitor (MachineConnectInfo) returns (StatusResponse) {}
+    rpc GetLatestConfig (MachineBasicInfo) returns (ConfigResponse) {}
+    rpc UploadMonitorItem (MonitorInfo) returns (StatusResponse) {}
+}
+
+message StatusResponse {
+    int32 status = 1;
+    string info = 2;
+}
+
+message ConfigItem {
+    double value = 1;
+
+    enum MonitorItemType {
+        CPU = 0;
+        MEM = 1;
+        NET = 2;
+    }
+
+    MonitorItemType type = 2;
+    int32 timestamp = 3;
+}
+
+message ConfigResponse {
+    int32 interval = 1;
+    int32 max_save_time = 2;
+    repeated ConfigItem items = 3;
+}
+
+message MonitorInfo {
+    repeated ConfigItem items = 1;
+    int32 end_time = 2;
+}
+
+message MachineConnectInfo {
+    string uri = 1;
+    int32 group_id = 3;
+}
+
+message MachineBasicInfo {
+    enum CPUArch {
+        X86_64 = 0;
+        AARCH64 = 1;
+        X86 = 2;
+    }
+
+    CPUArch cpu_arch = 1;
+    int32 cpu_cores = 2;
+    int32 memory_size = 3;
+    string os_type = 4;
+}
