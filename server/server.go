@@ -6,6 +6,7 @@ import (
 	"context"
 	"google.golang.org/grpc"
 	pb "Zetsu/zetsu"
+	common "Zetsu/common"
 )
 
 const (
@@ -18,17 +19,17 @@ type server struct {
 
 func (s *server) RegisterMonitor(ctx context.Context, in *pb.MachineConnectInfo) (*pb.StatusResponse, error) {
 	log.Printf("Received connectinfo: %v\n", in)
-	return &pb.StatusResponse{Status: 10001, Info: "aaa"}, nil
+	return &pb.StatusResponse{Status: int32(common.SUCCESS), Info: "aaa"}, nil
 }
 
 func (s *server) GetLatestConfig(ctx context.Context, in *pb.MachineBasicInfo) (*pb.ConfigResponse, error) {
 	log.Printf("Received machine basic info: %v\n", in)
-	return &pb.ConfigResponse{Interval: 1000, MaxSaveTime: 60, Items: []*pb.ConfigItem{}}, nil
+	return &pb.ConfigResponse{Interval: 100, MaxSaveTime: 60, Items: []*pb.ConfigItem{}}, nil
 }
 
 func (s *server) UploadMonitorItem(ctx context.Context, in *pb.MonitorInfo) (*pb.StatusResponse, error) {
 	log.Printf("Received monitor info: %v\n", in)
-	return &pb.StatusResponse{Status: 10000, Info: "bbbb"}, nil
+	return &pb.StatusResponse{Status: int32(common.SUCCESS), Info: "bbbb"}, nil
 }
 
 func main() {

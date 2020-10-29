@@ -1,13 +1,5 @@
 package main
 
-// import (
-// 	"context"
-// 	"log"
-// 	"time"
-// 	pb "Zetsu/zetsu"
-// 	"google.golang.org/grpc"
-// )
-
 import (
 	mon "Zetsu/monitor/func"
 )
@@ -33,13 +25,5 @@ func main() {
 
 	// upload info
 	monitor.UploadInfo()
-
-
-	// defer conn.Close()
-
-	// cli := pb.NewZetsuClient(conn)
-
-	// ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	// defer cancel()
 
 }
