@@ -2,6 +2,7 @@ package main
 
 import (
 	mon "Zetsu/monitor/func"
+	"time"
 )
 
 const (
@@ -9,21 +10,10 @@ const (
 )
 
 func main() {
-	// get current spyer
-	hostCollector := mon.NewHostCollector()
-	spyder := mon.GetSpyerByMonitorConfig(hostCollector.ToMachineBasicInfo())
-	spyder.Start()
-	defer spyder.End()
-
 	monitor := mon.NewMonitor(address)
 
-	// register to server
-	monitor.Register(hostCollector)
+	monitor.Start()
+	monitor.Stop()
 
-	// get config
-	monitor.GetConfig(hostCollector)
-
-	// upload info
-	monitor.UploadInfo()
-
+	time.Sleep(time.Second * 20)
 }

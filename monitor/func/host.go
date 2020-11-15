@@ -1,13 +1,14 @@
 package monitor
 
 import (
+	"fmt"
 	"net"
 	"runtime"
 	"syscall"
 	pb "Zetsu/zetsu"
 )
 
-type HostCollector struct {
+type HostInfo struct {
 	IP string
 	OS string
 	CpuArch pb.MachineBasicInfo_CPUArch
@@ -15,9 +16,9 @@ type HostCollector struct {
 	MemorySize int32
 }
 
-func NewHostCollector() *HostCollector {
-	host := HostCollector {
-		IP: getIpAddress(), 
+func NewHostInfo() *HostInfo {
+	host := HostInfo {
+		IP: getIpAddress(),
 		OS: getOSString(), 
 		CpuArch: getCPUArch(), 
 		CpuCores: getCPUCores(), 
@@ -27,12 +28,26 @@ func NewHostCollector() *HostCollector {
 	return &host
 }
 
-func (h *HostCollector)ToMachineBasicInfo() *pb.MachineBasicInfo {
+func (h *HostInfo) ToMachineBasicInfo() *pb.MachineBasicInfo {
 	return &pb.MachineBasicInfo{
 		CpuArch: h.CpuArch,
 		CpuCores: h.CpuCores,
 		MemorySize: h.MemorySize,
 		OsType: h.OS,
+	}
+}
+
+func (h *HostInfo) ToConnectionInfo() *pb.MachineConnectInfo {
+	return &pb.MachineConnectInfo{
+		Uri:     fmt.Sprintf("%s:%d", h.IP, 8765),
+		GroupId: 123,
+	}
+}
+
+func (h *HostInfo) getMonitorInfo(configItems []*pb.ConfigItem) *pb.MonitorInfo {
+	return &pb.MonitorInfo{
+		Items:   configItems,
+		EndTime: 0,
 	}
 }
 

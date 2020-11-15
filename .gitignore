@@ -3,3 +3,5 @@ server/server
 
 go.mod
 go.sum
+
+.idea

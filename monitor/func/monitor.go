@@ -1,19 +1,24 @@
 package monitor
 
 import (
-	"log"
-	"fmt"
-	"time"
-	"context"
-	"google.golang.org/grpc"
 	pb "Zetsu/zetsu"
+	"context"
+	"errors"
+	"fmt"
+	cron "github.com/robfig/cron/v3"
+	"google.golang.org/grpc"
+	"log"
+	"time"
 )
-
 
 type Monitor struct {
 	Client pb.ZetsuClient
 	Ctx context.Context
 	Cancel context.CancelFunc
+	crontab *cron.Cron
+	maxSaveTime int32
+	configItems []*pb.ConfigItem
+	spec string
 }
 
 func NewMonitor(address string) *Monitor {
@@ -25,41 +30,70 @@ func NewMonitor(address string) *Monitor {
 	cli := pb.NewZetsuClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 
-	return &Monitor{Client: cli, Ctx: ctx, Cancel: cancel}
+	monitor := Monitor{Client: cli, Ctx: ctx, Cancel: cancel}
+	hostInfo := NewHostInfo()
+	if err := monitor.register(hostInfo); err != nil {
+		log.Fatalf("Failed to register to remote: %s", err.Error())
+	}
+	if err := monitor.getConfig(hostInfo); err != nil {
+		log.Fatalf("Failed to register to remote: %s", err.Error())
+	}
+
+	crontab := cron.New()
+	crontab.AddFunc(monitor.spec, func() {
+		hostInfo := NewHostInfo()
+		err := monitor.uploadInfo(hostInfo)
+		if err != nil {
+			log.Printf("Failed to upload: %s", err.Error())
+		}
+	})
+	monitor.crontab = crontab
+
+	return &monitor
 }
 
-func (mon *Monitor) Register(host *HostCollector) error {
-	log.Println("In register func")
+func (mon *Monitor) Start() {
+	mon.crontab.Start()
+}
 
-	r, err := mon.Client.RegisterMonitor(mon.Ctx, &pb.MachineConnectInfo{Uri: fmt.Sprintf("%s:%d", host.IP, 8765), GroupId: 123})
+func (mon *Monitor) Stop()  {
+	mon.crontab.Stop()
+}
+
+func (mon *Monitor) register(host *HostInfo) error {
+	r, err := mon.Client.RegisterMonitor(mon.Ctx, host.ToConnectionInfo())
 	if err != nil {
-		log.Fatalf("Can't parse: %v", err)
+		return err
 	}
-	log.Printf("Get message from register monitor: %v\n", r)
+
+	if r.Status != 0 {
+		return errors.New(r.Info)
+	}
 	return nil
 }
 
-func (mon *Monitor) GetConfig(host *HostCollector) error {
-	log.Println("In get config func")
-	
-	mr, err := mon.Client.GetLatestConfig(mon.Ctx, &pb.MachineBasicInfo{CpuArch: host.CpuArch, CpuCores: host.CpuCores, MemorySize: host.MemorySize, OsType: host.OS})
+func (mon *Monitor) getConfig(host *HostInfo) error {
+	mr, err := mon.Client.GetLatestConfig(mon.Ctx, host.ToMachineBasicInfo())
 	if err != nil {
-		log.Fatalf("Can't parse: %v", err)
+		return err
 	}
 
-	log.Printf("Get message from get latest config: %v\n", mr)
+	mon.spec = fmt.Sprintf("*/%d * * * * ?", mr.Interval)
+	mon.maxSaveTime = mr.MaxSaveTime
+	mon.configItems = mr.Items
 	return nil
 }
 
-func (mon *Monitor) UploadInfo() error {
-	log.Println("In upload info func")
-
-	ur, err := mon.Client.UploadMonitorItem(mon.Ctx, &pb.MonitorInfo{Items: []*pb.ConfigItem{}, EndTime: 100379842})
+func (mon *Monitor) uploadInfo(host *HostInfo) error {
+	ur, err := mon.Client.UploadMonitorItem(mon.Ctx, host.getMonitorInfo(mon.configItems))
 	if err != nil {
-		log.Fatalf("Can't parse: %v", err)
+		return err
 	}
 
-	log.Printf("Get message from get latest config: %v\n", ur)
+	if ur.Status != 0 {
+		return errors.New(ur.Info)
+	}
+
 	return nil
 }
 
