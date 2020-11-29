@@ -1,6 +1,5 @@
 package common
 
-
 type STATUS uint8
 
 const (

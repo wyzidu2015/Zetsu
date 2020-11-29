@@ -11,9 +11,6 @@ const (
 
 func main() {
 	monitor := mon.NewMonitor(address)
-
-	monitor.Start()
-	monitor.Stop()
-
 	time.Sleep(time.Second * 20)
+	monitor.Stop()
 }

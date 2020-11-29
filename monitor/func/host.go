@@ -1,39 +1,44 @@
 package monitor
 
 import (
+	pb "Zetsu/zetsu"
 	"fmt"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
+	gpu_net "github.com/shirou/gopsutil/net"
+	"log"
 	"net"
 	"runtime"
 	"syscall"
-	pb "Zetsu/zetsu"
+	"time"
 )
 
 type HostInfo struct {
-	IP string
-	OS string
-	CpuArch pb.MachineBasicInfo_CPUArch
-	CpuCores int32
+	IP         string
+	OS         string
+	CpuArch    pb.MachineBasicInfo_CPUArch
+	CpuCores   int32
 	MemorySize int32
 }
 
 func NewHostInfo() *HostInfo {
-	host := HostInfo {
-		IP: getIpAddress(),
-		OS: getOSString(), 
-		CpuArch: getCPUArch(), 
-		CpuCores: getCPUCores(), 
+	host := HostInfo{
+		IP:         getIpAddress(),
+		OS:         getOSString(),
+		CpuArch:    getCPUArch(),
+		CpuCores:   getCPUCores(),
 		MemorySize: getMemorySize(),
 	}
-	
+
 	return &host
 }
 
 func (h *HostInfo) ToMachineBasicInfo() *pb.MachineBasicInfo {
 	return &pb.MachineBasicInfo{
-		CpuArch: h.CpuArch,
-		CpuCores: h.CpuCores,
+		CpuArch:    h.CpuArch,
+		CpuCores:   h.CpuCores,
 		MemorySize: h.MemorySize,
-		OsType: h.OS,
+		OsType:     h.OS,
 	}
 }
 
@@ -45,9 +50,50 @@ func (h *HostInfo) ToConnectionInfo() *pb.MachineConnectInfo {
 }
 
 func (h *HostInfo) getMonitorInfo(configItems []*pb.ConfigItem) *pb.MonitorInfo {
+	ret := make([]*pb.ConfigItem, len(configItems))
+	currentTimeStamp := time.Now().Unix()
+	for index, configItem := range configItems {
+		curConfigItem := &pb.ConfigItem{
+			Value:     0,
+			Type:      configItem.Type,
+			Timestamp: int32(currentTimeStamp),
+		}
+		switch configItem.Type {
+		case pb.ConfigItem_CPU:
+			usages, err := cpu.Percent(0, false)
+			value := float64(-1)
+			if err != nil {
+				log.Printf("Failed to get cpu usage: %v", err)
+			} else {
+				value = usages[0]
+			}
+			curConfigItem.Value = value
+
+		case pb.ConfigItem_MEM:
+			memStat, err := mem.VirtualMemory()
+			value := float64(-1)
+			if err != nil {
+				log.Printf("Failed to get memory usage: %v", err)
+			} else {
+				value = memStat.UsedPercent
+			}
+			curConfigItem.Value = value
+		case pb.ConfigItem_NET:
+			counters, err := gpu_net.IOCounters(false)
+			value := float64(-1)
+			if err != nil {
+				log.Printf("Failed to get net usage: %v", err)
+			} else {
+				value = float64(counters[0].BytesSent)
+			}
+			curConfigItem.Value = value
+		}
+		ret[index] = curConfigItem
+	}
+
 	return &pb.MonitorInfo{
-		Items:   configItems,
-		EndTime: 0,
+		Items:   ret,
+		EndTime: int32(time.Now().Unix()),
 	}
 }
 
@@ -101,6 +147,6 @@ func getMemorySize() int32 {
 
 	memSize := memStat.Sys * uint64(syscall.Getpagesize())
 	memSize = memSize / 1024 / 1024 / 1024 / 8
-	
+
 	return int32(memSize)
 }

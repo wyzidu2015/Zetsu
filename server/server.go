@@ -1,12 +1,12 @@
 package main
 
 import (
-	"log"
-	"net"
+	common "Zetsu/common"
+	pb "Zetsu/zetsu"
 	"context"
 	"google.golang.org/grpc"
-	pb "Zetsu/zetsu"
-	common "Zetsu/common"
+	"log"
+	"net"
 )
 
 const (
@@ -19,17 +19,23 @@ type server struct {
 
 func (s *server) RegisterMonitor(ctx context.Context, in *pb.MachineConnectInfo) (*pb.StatusResponse, error) {
 	log.Printf("Received connectinfo: %v\n", in)
-	return &pb.StatusResponse{Status: int32(common.SUCCESS), Info: "aaa"}, nil
+	return &pb.StatusResponse{Status: int32(common.SUCCESS), Info: ""}, nil
 }
 
 func (s *server) GetLatestConfig(ctx context.Context, in *pb.MachineBasicInfo) (*pb.ConfigResponse, error) {
 	log.Printf("Received machine basic info: %v\n", in)
-	return &pb.ConfigResponse{Interval: 100, MaxSaveTime: 60, Items: []*pb.ConfigItem{}}, nil
+	configItems := []*pb.ConfigItem{
+		{Type: pb.ConfigItem_CPU},
+		{Type: pb.ConfigItem_MEM},
+		{Type: pb.ConfigItem_NET},
+	}
+
+	return &pb.ConfigResponse{Interval: 5, MaxSaveTime: 60, Items: configItems}, nil
 }
 
 func (s *server) UploadMonitorItem(ctx context.Context, in *pb.MonitorInfo) (*pb.StatusResponse, error) {
 	log.Printf("Received monitor info: %v\n", in)
-	return &pb.StatusResponse{Status: int32(common.SUCCESS), Info: "bbbb"}, nil
+	return &pb.StatusResponse{Status: int32(common.SUCCESS), Info: ""}, nil
 }
 
 func main() {
@@ -44,5 +50,3 @@ func main() {
 		log.Fatalf("Failed to serve: %v", err)
 	}
 }
-
-
